@@ -2,9 +2,9 @@
 
 Automatically convert images in the HTML output from Typora to base64.
 
-## Support Types
+## Support Sources
 
-- [x] Local image(Absolute/Relative Path)
+- [x] Local image (absolute/relative path)
 - [x] Online image
 
 ## Supported Image Types
