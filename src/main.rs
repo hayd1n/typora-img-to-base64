@@ -1,5 +1,4 @@
 use base64::prelude::*;
-use bytes::Buf;
 use image::ImageFormat;
 use reqwest::blocking::get;
 use select::document::Document;
@@ -14,14 +13,24 @@ fn is_relative_path(src: &str) -> bool {
     !src.starts_with("http://") && !src.starts_with("https://")
 }
 
-// Read an image from the local filesystem and convert it to Base64
+// Read local image file (including SVG) and convert to Base64
 fn read_local_image_as_base64(path: &Path) -> Option<String> {
+    if path.extension().and_then(|ext| ext.to_str()) == Some("svg") {
+        // For SVG files, read as text
+        let mut file = File::open(path).ok()?;
+        let mut svg_content = String::new();
+        file.read_to_string(&mut svg_content).ok()?;
+        let base64_string = BASE64_STANDARD.encode(svg_content.as_bytes());
+        return Some(format!("data:image/svg+xml;base64,{}", base64_string));
+    }
+
+    // For other image formats, read as binary
     let file = File::open(path).ok()?;
     let mut reader = BufReader::new(file);
     let mut buffer = Vec::new();
     reader.read_to_end(&mut buffer).ok()?;
 
-    // Detect the image format
+    // Detect image format
     let format = image::guess_format(&buffer).ok()?;
     let mime_type = match format {
         ImageFormat::Jpeg => "image/jpeg",
@@ -38,19 +47,22 @@ fn read_local_image_as_base64(path: &Path) -> Option<String> {
     Some(format!("data:{};base64,{}", mime_type, base64_string))
 }
 
-// Download an online image and convert it to Base64
+// Download image (including SVG) from the network and convert to Base64
 fn download_image_as_base64(url: &str) -> Option<String> {
     let response = get(url).ok()?;
-    let mut bytes = Vec::new();
-    response
-        .bytes()
-        .ok()?
-        .reader()
-        .read_to_end(&mut bytes)
-        .ok()?;
+    let bytes = response.bytes().ok()?;
 
-    // Detect the image format
-    let format = image::guess_format(&bytes).ok()?;
+    // Check if SVG by inspecting first bytes
+    if url.ends_with(".svg") || (bytes.starts_with(b"<svg") && bytes.ends_with(b"</svg>")) {
+        // Convert SVG XML to Base64 as text
+        let svg_content = String::from_utf8_lossy(&bytes);
+        let base64_string = BASE64_STANDARD.encode(svg_content.as_bytes());
+        return Some(format!("data:image/svg+xml;base64,{}", base64_string));
+    }
+
+    // Handle binary images
+    let bytes_vec = bytes.to_vec();
+    let format = image::guess_format(&bytes_vec).ok()?;
     let mime_type = match format {
         ImageFormat::Jpeg => "image/jpeg",
         ImageFormat::Png => "image/png",
@@ -62,7 +74,7 @@ fn download_image_as_base64(url: &str) -> Option<String> {
         _ => return None, // Unsupported format
     };
 
-    let base64_string = BASE64_STANDARD.encode(&bytes);
+    let base64_string = BASE64_STANDARD.encode(&bytes_vec);
     Some(format!("data:{};base64,{}", mime_type, base64_string))
 }
 
