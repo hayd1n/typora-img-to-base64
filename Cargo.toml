@@ -1,6 +1,6 @@
 [package]
 name = "typora-img-to-base64"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 authors = ["Hayden Chang <m831718@gmail.com>", "hayd1n"]
 description = "Typora image to base64"
