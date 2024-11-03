@@ -16,6 +16,7 @@ Automatically convert images in the HTML output from Typora to base64.
 - [x] TIFF
 - [x] ICO
 - [x] WebP
+- [x] SVG
 
 ## Installation
 
